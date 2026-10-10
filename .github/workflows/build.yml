@@ -41,10 +41,18 @@ jobs:
       # On CONSTRUIT le binaire depuis les sources plutôt que de le télécharger :
       # l'image correspond alors exactement à un commit connu, et l'on sait
       # reproduire la même image plus tard.
+      # Le depot ceffio est PRIVE : le clone a besoin d'un jeton. On reutilise
+      # GHCR_TOKEN, qui a deja le scope repo — inutile d'en ajouter un second
+      # pour le meme compte. Le jeton est retire de l'URL apres le clone pour
+      # qu'il n'apparaisse dans aucun log.
       - name: Récupérer et construire Ceffio
         run: |
-          git clone --depth 1 https://github.com/ceffio-suite/ceffio.git /tmp/ceffio
+          set -eu
+          TOKEN="${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}"
+          git clone --depth 1 \
+            "https://x-access-token:${TOKEN}@github.com/ceffio-suite/ceffio.git" /tmp/ceffio
           cd /tmp/ceffio
+          git remote set-url origin https://github.com/ceffio-suite/ceffio.git
           mkdir -p /tmp/ctx/usr/local/bin
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
             -buildvcs=false -trimpath -ldflags="-s -w" \
@@ -94,6 +102,7 @@ jobs:
           IMAGE="ghcr.io/ceffio-suite/ceffio-console"
           VERSION="${{ steps.version.outputs.version }}"
 
+          # Meme jeton que pour le clone : un seul secret suffit.
           echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" | \
             docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
