@@ -111,7 +111,9 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: ceffio-console ${{ steps.tag.outputs.tag }}
-          prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
+          # NOT "contains(tag, '-')": a dashed tag is the NORM here, not a
+          # pre-release. Only an explicit suffix marks a preview.
+          prerelease: ${{ contains(steps.tag.outputs.tag, '-rc') || contains(steps.tag.outputs.tag, '-beta') || contains(steps.tag.outputs.tag, '-alpha') }}
           generate_release_notes: true
           body_path: RELEASE_BODY.md
         env:
