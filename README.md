@@ -103,7 +103,7 @@ An existing tag proves nothing. To verify that an image is actually published
 and downloadable:
 
 ```bash
-docker pull --platform linux/amd64 ghcr.io/ceffio-suite/ceffio-console:0.3.0
+docker pull --platform linux/amd64 ghcr.io/ceffio-suite/ceffio-console:0.1.0
 ```
 
 `--platform` is required from an ARM Mac: the image targets **amd64**, like
