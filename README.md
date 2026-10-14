@@ -12,7 +12,7 @@
 
 Container image of the **Ceffio administration console**.
 
-    ghcr.io/ceffio-suite/ceffio-console:0.1.0
+    ghcr.io/ceffio-suite/ceffio-console:0.2.0
 
 This is a **publication repository**, not a code repository: the console lives
 in the main [`ceffio-suite/ceffio`](https://github.com/ceffio-suite/ceffio)
@@ -52,14 +52,14 @@ Via tag — this is the normal way, and it guarantees that the Git tag and the
 image tag match:
 
 ```bash
-git tag -a v0.1.0 -m "Console 0.1.0"
-git push origin v0.1.0
+git tag -a v0.2.0 -m "Console 0.2.0"
+git push origin v0.2.0
 ```
 
 Or manually, to republish an existing version:
 
 ```bash
-gh workflow run build.yml -f version=0.1.0
+gh workflow run build.yml -f version=0.2.0
 ```
 
 ## Usage
@@ -70,7 +70,7 @@ state directly from the Kubernetes API.
 ```yaml
 containers:
 - name: console
-  image: ghcr.io/ceffio-suite/ceffio-console:0.1.0
+  image: ghcr.io/ceffio-suite/ceffio-console:0.2.0
   args: ["console", "--domain", "example.com", "--addr", ":8088"]
   env:
   # Console access key (the interface asks for it, then sends it as a header).
@@ -103,7 +103,7 @@ An existing tag proves nothing. To verify that an image is actually published
 and downloadable:
 
 ```bash
-docker pull --platform linux/amd64 ghcr.io/ceffio-suite/ceffio-console:0.1.0
+docker pull --platform linux/amd64 ghcr.io/ceffio-suite/ceffio-console:0.2.0
 ```
 
 `--platform` is required from an ARM Mac: the image targets **amd64**, like
