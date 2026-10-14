@@ -63,4 +63,6 @@ git checkout develop && git merge --no-ff release/0.4.0 && git push
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+AGPL-3.0-or-later, Copyright © MANDEM — see [LICENSE](LICENSE). The image
+packages the [Ceffio](https://github.com/ceffio-suite/ceffio) binary, which
+is under the same license; by contributing you accept it for yours.
