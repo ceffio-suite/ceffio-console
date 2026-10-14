@@ -1,72 +1,82 @@
+<p align="center">
+  <img src="assets/ceffio-banner-1280.png" alt="Ceffio" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/ceffio-suite/ceffio-console/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/ceffio-suite/ceffio-console/build.yml?label=build&logo=github" alt="build status"></a>
+  <a href="https://github.com/ceffio-suite/ceffio-console/pkgs/container/ceffio-console"><img src="https://img.shields.io/badge/GHCR-ceffio--console-2496ED?logo=docker&logoColor=white" alt="GHCR image"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue" alt="AGPL-3.0-or-later license"></a>
+</p>
+
 # ceffio-console
 
-Image conteneur de la **console d'administration Ceffio**.
+Container image of the **Ceffio administration console**.
 
-    ghcr.io/ceffio-suite/ceffio-console:0.3.0
+    ghcr.io/ceffio-suite/ceffio-console:0.1.0
 
-C'est un **dépôt de publication**, pas un dépôt de code : la console vit dans le
-dépôt principal [`ceffio-suite/ceffio`](https://github.com/ceffio-suite/ceffio),
-sous `internal/console/`. Ce dépôt-ci existe pour une raison précise — rendre
-l'image **adressable et versionnée**, afin qu'un déploiement puisse la tirer sans
-rien reconstruire sur la machine cible.
+This is a **publication repository**, not a code repository: the console lives
+in the main [`ceffio-suite/ceffio`](https://github.com/ceffio-suite/ceffio)
+repository, under `internal/console/`. This repository exists for one precise
+reason — to make the image **addressable and versioned**, so that a deployment
+can pull it without rebuilding anything on the target machine.
 
-## Pourquoi une image séparée
+## Why a separate image
 
-La console n'est pas un service autonome : elle **embarque le binaire `ceffio`**,
-qui porte à la fois la page web et la logique d'administration (lecture de l'état
-du cluster, gestion des comptes Keycloak). On ne peut donc pas la construire à
-partir d'un simple `Dockerfile` dans son dossier — il faut le binaire complet.
+The console is not a standalone service: it **embeds the `ceffio` binary**,
+which carries both the web page and the administration logic (reading the
+cluster state, Keycloak account management). It therefore cannot be built from
+a simple `Dockerfile` in its folder — the full binary is required.
 
-Plutôt que d'extraire la console dans un dépôt de code séparé (ce qui
-dupliquerait le projet, ou créerait une dépendance croisée entre deux dépôts), ce
-dépôt porte **le workflow** : il va chercher les sources, construit le binaire,
-l'emballe et le publie.
+Rather than extracting the console into a separate code repository (which would
+duplicate the project, or create a cross-dependency between two repositories),
+this repository carries **the workflow**: it fetches the sources, builds the
+binary, packages it and publishes it.
 
-## Ce que fait le workflow
+## What the workflow does
 
 ```
-1. Construire le binaire Ceffio    depuis github.com/ceffio-suite/ceffio
-2. L'emballer en image minimale    FROM scratch, binaire statique seul
-3. Publier sur GHCR                ghcr.io/ceffio-suite/ceffio-console:<version>
+1. Build the Ceffio binary       from github.com/ceffio-suite/ceffio
+2. Package it as a minimal image FROM scratch, static binary only
+3. Publish to GHCR               ghcr.io/ceffio-suite/ceffio-console:<version>
 ```
 
-L'image part d'un système **vide**. Le binaire est statique (`CGO_ENABLED=0`), il
-n'a besoin d'aucune bibliothèque ; seules les autorités de certification sont
-ajoutées, car la console appelle l'API Kubernetes et Keycloak en HTTPS. Pour une
-console d'administration joignable en réseau, réduire la surface d'attaque à
-presque rien n'est pas un détail.
+The image starts from an **empty** system. The binary is static
+(`CGO_ENABLED=0`), it needs no library; only the certificate authorities are
+added, because the console calls the Kubernetes API and Keycloak over HTTPS.
+For an administration console reachable over the network, reducing the attack
+surface to almost nothing is not a detail.
 
-## Publier une version
+## Publish a version
 
-Par tag — c'est la voie normale, et elle garantit que le tag Git et le tag
-d'image correspondent :
+Via tag — this is the normal way, and it guarantees that the Git tag and the
+image tag match:
 
 ```bash
-git tag -a v0.3.0 -m "Console 0.3.0"
-git push origin v0.3.0
+git tag -a v0.1.0 -m "Console 0.1.0"
+git push origin v0.1.0
 ```
 
-Ou manuellement, pour republier une version existante :
+Or manually, to republish an existing version:
 
 ```bash
-gh workflow run build.yml -f version=0.3.0
+gh workflow run build.yml -f version=0.1.0
 ```
 
-## Utilisation
+## Usage
 
-L'image est prévue pour tourner **dans le cluster Ceffio**, où elle lit son état
-directement de l'API Kubernetes.
+The image is meant to run **inside the Ceffio cluster**, where it reads its
+state directly from the Kubernetes API.
 
 ```yaml
 containers:
 - name: console
-  image: ghcr.io/ceffio-suite/ceffio-console:0.3.0
+  image: ghcr.io/ceffio-suite/ceffio-console:0.1.0
   args: ["console", "--domain", "example.com", "--addr", ":8088"]
   env:
-  # Clé d'accès à la console (l'interface la demande, puis l'envoie en en-tête).
+  # Console access key (the interface asks for it, then sends it as a header).
   - name: CEFFIO_KEY
     valueFrom: {secretKeyRef: {name: ceffio-console-key, key: key}}
-  # Identifiants d'administration Keycloak, pour la gestion des comptes SSO.
+  # Keycloak administration credentials, for SSO account management.
   - name: KC_ADMIN
     valueFrom: {secretKeyRef: {name: keycloak-admin, key: username}}
   - name: KC_ADMIN_PASSWORD
@@ -75,30 +85,30 @@ containers:
   - {name: http, containerPort: 8088}
 ```
 
-En pratique on ne l'écrit pas à la main : `ceffio install` (phase 11) déploie la
-console et **importe l'image localement** quand elle n'est pas disponible dans un
-registre. Cette image publiée sert aux installations qui préfèrent tirer plutôt que
-construire.
+In practice it is not written by hand: `ceffio install` (phase 11) deploys the
+console and **imports the image locally** when it is not available from a
+registry. This published image serves installations that prefer pulling over
+building.
 
-## Permissions nécessaires dans le cluster
+## Permissions required in the cluster
 
-La console a besoin d'un `ServiceAccount` pouvant **lire** les pods, services,
-déploiements, ingress et certificats. Elle n'écrit pas dans le cluster : le
-déploiement reste l'affaire de la CLI. Une installation Ceffio crée ce rôle
-automatiquement.
+The console needs a `ServiceAccount` that can **read** pods, services,
+deployments, ingresses and certificates. It does not write to the cluster:
+deployment remains the CLI's business. A Ceffio installation creates this role
+automatically.
 
-## Vérifier une image
+## Verify an image
 
-Un tag qui existe ne prouve rien. Pour vérifier qu'une image est réellement
-publiée et téléchargeable :
+An existing tag proves nothing. To verify that an image is actually published
+and downloadable:
 
 ```bash
 docker pull --platform linux/amd64 ghcr.io/ceffio-suite/ceffio-console:0.3.0
 ```
 
-Le `--platform` est nécessaire depuis un Mac ARM : l'image cible **amd64**, comme
-les serveurs Linux qu'elle équipe.
+`--platform` is required from an ARM Mac: the image targets **amd64**, like
+the Linux servers it equips.
 
-## Licence
+## License
 
-À définir (open source — licence en attente de décision).
+To be defined (open source — license pending decision).

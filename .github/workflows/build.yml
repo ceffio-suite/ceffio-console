@@ -1,24 +1,27 @@
 name: build
 
-# Construit l'image de la console d'administration Ceffio et la publie sur GHCR.
+# Builds the Ceffio administration console image and publishes it to GHCR.
 #
-# POURQUOI CE DEPOT EXISTE SÉPARÉMENT : la console n'est pas un service
-# autonome — elle embarque le binaire `ceffio` (c'est lui qui porte la page web
-# et la logique d'administration). Ce dépôt ne contient donc PAS le code : il
-# porte le workflow qui construit ce binaire, l'emballe en image et la publie.
-# Le résultat est une image adressable et versionnée, que le déploiement peut
-# tirer sans rien reconstruire sur la machine cible.
+# WHY THIS REPOSITORY EXISTS SEPARATELY: the console is not a standalone
+# service — it embeds the `ceffio` binary (which carries the web page and the
+# administration logic). This repository therefore does NOT contain the code:
+# it carries the workflow that builds this binary, packages it as an image and
+# publishes it. The result is an addressable, versioned image that the
+# deployment can pull without rebuilding anything on the target machine.
 #
-# Tag = version : règle du projet. Une image sans version ne peut être ni
-# comparée, ni mise à niveau de façon reproductible.
+# Tag = version: project rule. An image without a version can neither be
+# compared nor upgraded reproducibly.
 
 on:
   push:
+    branches: [main, develop]
     tags: ['v*']
+  pull_request:
+    branches: [main, develop]
   workflow_dispatch:
     inputs:
       version:
-        description: "Version à publier (ex. 0.3.0). Vide = dérivée du tag."
+        description: "Version to publish (e.g. 0.3.0). Empty = derived from the tag."
         required: false
 
 permissions:
@@ -30,22 +33,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Récupérer ce dépôt
+      - name: Check out this repository
         uses: actions/checkout@v4
 
-      - name: Installer Go
+      - name: Install Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.24'
 
-      # On CONSTRUIT le binaire depuis les sources plutôt que de le télécharger :
-      # l'image correspond alors exactement à un commit connu, et l'on sait
-      # reproduire la même image plus tard.
-      # Le depot ceffio est PRIVE : le clone a besoin d'un jeton. On reutilise
-      # GHCR_TOKEN, qui a deja le scope repo — inutile d'en ajouter un second
-      # pour le meme compte. Le jeton est retire de l'URL apres le clone pour
-      # qu'il n'apparaisse dans aucun log.
-      - name: Récupérer et construire Ceffio
+      # We BUILD the binary from source rather than downloading it: the image
+      # then corresponds exactly to a known commit, and the same image can be
+      # reproduced later.
+      # The ceffio repository is PRIVATE: the clone needs a token. We reuse
+      # GHCR_TOKEN, which already has the repo scope — no need to add a second
+      # one for the same account. The token is removed from the URL after the
+      # clone so that it never appears in any log.
+      - name: Fetch and build Ceffio
         run: |
           set -eu
           TOKEN="${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}"
@@ -59,7 +62,7 @@ jobs:
             -o /tmp/ctx/usr/local/bin/ceffio ./cmd/ceffio
           ls -la /tmp/ctx/usr/local/bin/ceffio
 
-      - name: Déterminer la version
+      - name: Determine the version
         id: version
         run: |
           set -eu
@@ -71,20 +74,20 @@ jobs:
             VERSION="0.0.0-$(git rev-parse --short HEAD)"
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Version : ${VERSION}"
+          echo "Version: ${VERSION}"
 
-      # L'image part d'un système VIDE : le binaire est statique
-      # (CGO_ENABLED=0), il n'a besoin d'aucune bibliothèque système. Pour une
-      # console d'administration joignable en réseau, réduire la surface
-      # d'attaque à presque rien n'est pas un détail — et une image vide ne
-      # peut pas embarquer un shell qu'on aurait oublié d'y laisser.
-      - name: Écrire le Dockerfile
+      # The image starts from an EMPTY system: the binary is static
+      # (CGO_ENABLED=0), it needs no system library. For an administration
+      # console reachable over the network, reducing the attack surface to
+      # almost nothing is not a detail — and an empty image cannot embed a
+      # shell we might have forgotten to leave there.
+      - name: Write the Dockerfile
         run: |
           cat > /tmp/ctx/Dockerfile <<'DOCKERFILE'
           FROM alpine:3.20 AS certs
           FROM scratch
-          # Les autorités de certification : la console appelle l'API Kubernetes
-          # et Keycloak en HTTPS, elle doit vérifier leurs certificats.
+          # The certificate authorities: the console calls the Kubernetes API
+          # and Keycloak over HTTPS, it must verify their certificates.
           COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
           COPY usr/local/bin/ceffio /usr/local/bin/ceffio
           EXPOSE 8088
@@ -93,16 +96,16 @@ jobs:
           DOCKERFILE
           cat /tmp/ctx/Dockerfile
 
-      # Token dédié plutôt que le GITHUB_TOKEN : la politique de l'organisation
-      # peut restreindre ce dernier, et c'est une bonne pratique qu'on ne
-      # préfère pas affaiblir pour faire passer un build.
-      - name: Publier sur GHCR
+      # Dedicated token rather than the GITHUB_TOKEN: the organization policy
+      # may restrict the latter, and it is a good practice we prefer not to
+      # weaken to make a build pass.
+      - name: Publish to GHCR
         run: |
           set -eu
           IMAGE="ghcr.io/ceffio-suite/ceffio-console"
           VERSION="${{ steps.version.outputs.version }}"
 
-          # Meme jeton que pour le clone : un seul secret suffit.
+          # Same token as for the clone: a single secret is enough.
           echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" | \
             docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
@@ -111,4 +114,4 @@ jobs:
             -t "${IMAGE}:latest" \
             --push /tmp/ctx
 
-          echo "Publié : ${IMAGE}:${VERSION}"
+          echo "Published: ${IMAGE}:${VERSION}"
