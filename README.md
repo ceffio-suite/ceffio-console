@@ -1,24 +1,56 @@
+> **This repository is archived and no longer maintained.**
+> Its content is kept for reference only. Everything below describes a scheme
+> that has since been replaced — see the notice at the top for what is
+> current. Do not follow the instructions in this README.
+
+# Why this repository was archived
+
+This repository published the administration console as its own image,
+`ghcr.io/ceffio-suite/ceffio-console`. That scheme has been replaced: the
+console image is now **published by the main repository**, alongside every other
+Ceffio component, as
+
+```
+ghcr.io/ceffio-suite/ceffio:<version>
+```
+
+**What changed.** `ceffio-suite/ceffio` gained its own release workflow, which
+builds the binary, packages it and publishes one image per release, plus the
+release archives for `linux/amd64` and `linux/arm64`. Keeping a second
+publication path for one component meant two ways to build the same thing, two
+places to fix a defect in the packaging, and a version number that could drift
+from the product it belonged to — this repository was last pushed while the
+product was at 0.2.0, and the console has since been deployed at 0.7.1 from the
+main repository's image.
+
+**Nothing needs this repository to build the console.** The console lives in
+`internal/console/` of [`ceffio-suite/ceffio`](https://github.com/ceffio-suite/ceffio),
+and `ceffio install` deploys it. The released image is what a deployment pulls;
+`ceffio` itself carries the image reference and never refers to this repository.
+
+Existing tags and the GHCR package remain available. If you were pulling
+`ghcr.io/ceffio-suite/ceffio-console`, switch to
+`ghcr.io/ceffio-suite/ceffio:<version>` — the same binary, published with the
+product.
+
+---
+
+The rest of this file is the original README, kept unchanged for reference.
+
 <p align="center">
   <img src="assets/ceffio-banner-1280.png" alt="Ceffio" width="100%">
 </p>
 
-<p align="center">
-  <a href="https://github.com/ceffio-suite/ceffio-console/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/ceffio-suite/ceffio-console/build.yml?label=build&logo=github" alt="build status"></a>
-  <a href="https://github.com/ceffio-suite/ceffio-console/pkgs/container/ceffio-console"><img src="https://img.shields.io/badge/GHCR-ceffio--console-2496ED?logo=docker&logoColor=white" alt="GHCR image"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue" alt="AGPL-3.0-or-later license"></a>
-</p>
+# ceffio-console (archived)
 
-# ceffio-console
-
-Container image of the **Ceffio administration console**.
-
-    ghcr.io/ceffio-suite/ceffio-console:0.2.0
+Container image of the **Ceffio administration console** — superseded, see the
+notice above.
 
 This is a **publication repository**, not a code repository: the console lives
 in the main [`ceffio-suite/ceffio`](https://github.com/ceffio-suite/ceffio)
-repository, under `internal/console/`. This repository exists for one precise
-reason — to make the image **addressable and versioned**, so that a deployment
-can pull it without rebuilding anything on the target machine.
+repository, under `internal/console/`. This repository existed to make the image
+**addressable and versioned**, so that a deployment could pull it without
+rebuilding anything on the target machine.
 
 ## Why a separate image
 
@@ -29,10 +61,10 @@ a simple `Dockerfile` in its folder — the full binary is required.
 
 Rather than extracting the console into a separate code repository (which would
 duplicate the project, or create a cross-dependency between two repositories),
-this repository carries **the workflow**: it fetches the sources, builds the
-binary, packages it and publishes it.
+this repository carried **the workflow**: it fetched the sources, built the
+binary, packaged it and published it.
 
-## What the workflow does
+## What the workflow did
 
 ```
 1. Build the Ceffio binary       from github.com/ceffio-suite/ceffio
@@ -45,22 +77,6 @@ The image starts from an **empty** system. The binary is static
 added, because the console calls the Kubernetes API and Keycloak over HTTPS.
 For an administration console reachable over the network, reducing the attack
 surface to almost nothing is not a detail.
-
-## Publish a version
-
-Via tag — this is the normal way, and it guarantees that the Git tag and the
-image tag match:
-
-```bash
-git tag -a v0.2.0 -m "Console 0.2.0"
-git push origin v0.2.0
-```
-
-Or manually, to republish an existing version:
-
-```bash
-gh workflow run build.yml -f version=0.2.0
-```
 
 ## Usage
 
@@ -86,9 +102,7 @@ containers:
 ```
 
 In practice it is not written by hand: `ceffio install` (phase 11) deploys the
-console and **imports the image locally** when it is not available from a
-registry. This published image serves installations that prefer pulling over
-building.
+console and imports the image locally when it is not available from a registry.
 
 ## Permissions required in the cluster
 
@@ -108,7 +122,3 @@ docker pull --platform linux/amd64 ghcr.io/ceffio-suite/ceffio-console:0.2.0
 
 `--platform` is required from an ARM Mac: the image targets **amd64**, like
 the Linux servers it equips.
-
-## License
-
-To be defined (open source — license pending decision).
